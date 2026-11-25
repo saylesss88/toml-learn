@@ -63,7 +63,11 @@ impl fmt::Display for ManifestError {
         match self {
             ManifestError::Parse(e) => write!(f, "invalid TOML: {e}"),
             ManifestError::Missing(key) => write!(f, "missing required key `{key}`"),
-            ManifestError::WrongType { key, expected, found } => {
+            ManifestError::WrongType {
+                key,
+                expected,
+                found,
+            } => {
                 write!(f, "`{key}` should be a {expected}, found {found}")
             }
         }
@@ -100,7 +104,10 @@ impl Manifest {
             }
         }
 
-        Ok(Manifest { package, dependencies })
+        Ok(Manifest {
+            package,
+            dependencies,
+        })
     }
 }
 

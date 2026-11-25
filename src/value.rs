@@ -66,6 +66,7 @@ impl Value {
     }
 
     /// STEP 2 (you): same pattern as as_integer.
+    /// TODO: reject non-TOML floats
     pub fn as_float(&self) -> Option<f64> {
         match self {
             Value::Float(i) => Some(*i),

@@ -9,11 +9,11 @@
 //!
 //! See all remaining: cargo test -- --ignored
 
-use toml_learn::{parse, Dependency, Manifest, Value};
+use toml_learn::{Dependency, Manifest, Value, parse};
 
 // ---- STEP 1: '#' inside strings (also see unit test in parser.rs) ---------
 #[test]
-#[ignore = "step 1"]
+// #[ignore = "step 1"]
 fn step1_hash_inside_string() {
     let t = parse(r##"url = "https://x.com/#frag" # real comment"##).unwrap();
     assert_eq!(t["url"].as_str(), Some("https://x.com/#frag"));
@@ -21,7 +21,7 @@ fn step1_hash_inside_string() {
 
 // ---- STEP 2: floats ------------------------------------------------------
 #[test]
-#[ignore = "step 2"]
+// #[ignore = "step 2"]
 fn step2_floats() {
     let t = parse("a = 3.14\nb = -0.5\nc = 1e6\nd = 7").unwrap();
     assert_eq!(t["a"].as_float(), Some(3.14));
@@ -32,14 +32,15 @@ fn step2_floats() {
 
 // ---- STEP 3: strings done properly ---------------------------------------
 #[test]
-#[ignore = "step 3"]
+// #[ignore = "step 3"]
 fn step3_escapes() {
     let t = parse(r#"s = "say \"hi\"\n\\""#).unwrap();
     assert_eq!(t["s"].as_str(), Some("say \"hi\"\n\\"));
+    println!("{t:?}");
 }
 
 #[test]
-#[ignore = "step 3"]
+// #[ignore = "step 3"]
 fn step3_literal_strings() {
     // Single quotes: no escapes at all. Great for Windows paths & regex.
     let t = parse(r#"p = 'C:\Users\tom'"#).unwrap();
@@ -50,11 +51,13 @@ fn step3_literal_strings() {
 #[test]
 #[ignore = "step 4"]
 fn step4_arrays() {
-    let t = parse(r#"a = [1, 2, 3]
+    let t = parse(
+        r#"a = [1, 2, 3]
 b = ["x", "y"]
 c = []
 d = [[1, 2], [3]]
-e = ["has, comma", "ok"]"#)
+e = ["has, comma", "ok"]"#,
+    )
     .unwrap();
     assert_eq!(t["a"].as_array().map(|a| a.len()), Some(3));
     assert_eq!(t["b"].as_array().unwrap()[1].as_str(), Some("y"));
@@ -77,7 +80,12 @@ fn step5_inline_table() {
     let t = parse(r#"dep = { version = "1.0", features = ["derive", "std"] }"#).unwrap();
     let dep = &t["dep"];
     assert_eq!(dep.get("version").and_then(Value::as_str), Some("1.0"));
-    assert_eq!(dep.get("features").and_then(Value::as_array).map(|a| a.len()), Some(2));
+    assert_eq!(
+        dep.get("features")
+            .and_then(Value::as_array)
+            .map(|a| a.len()),
+        Some(2)
+    );
 }
 
 // ---- STEP 6: dotted keys -------------------------------------------------
@@ -85,7 +93,13 @@ fn step5_inline_table() {
 #[ignore = "step 6"]
 fn step6_dotted_keys() {
     let t = parse("a.b.c = 1\na.d = 2").unwrap();
-    assert_eq!(t["a"].get("b").and_then(|b| b.get("c")).and_then(Value::as_integer), Some(1));
+    assert_eq!(
+        t["a"]
+            .get("b")
+            .and_then(|b| b.get("c"))
+            .and_then(Value::as_integer),
+        Some(1)
+    );
     assert_eq!(t["a"].get("d").and_then(Value::as_integer), Some(2));
 }
 
@@ -93,7 +107,8 @@ fn step6_dotted_keys() {
 #[test]
 #[ignore = "step 7"]
 fn step7_authors() {
-    let m = Manifest::parse("[package]\nname = \"x\"\nversion = \"1\"\nauthors = [\"Tom\"]").unwrap();
+    let m =
+        Manifest::parse("[package]\nname = \"x\"\nversion = \"1\"\nauthors = [\"Tom\"]").unwrap();
     assert_eq!(m.package.authors, vec!["Tom".to_string()]);
 }
 
@@ -118,7 +133,10 @@ local = { path = "../local", optional = true }
             optional: false,
         }
     );
-    assert!(matches!(m.dependencies["local"], Dependency::Detailed { optional: true, .. }));
+    assert!(matches!(
+        m.dependencies["local"],
+        Dependency::Detailed { optional: true, .. }
+    ));
 }
 
 // ---- STEP 8: the wall (needs the phase-2 refactor) -----------------------

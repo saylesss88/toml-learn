@@ -116,7 +116,7 @@ fn get_or_create_table<'a>(
                 return Err(ParseError::new(
                     line_no,
                     format!("`{key}` is already a {}, not a table", other.type_name()),
-                ))
+                ));
             }
         };
     }
@@ -133,9 +133,17 @@ fn parse_value(s: &str, line_no: usize) -> Result<Value, ParseError> {
     }
 
     // Basic string. STEP 3 (you): escapes like \" and \n, plus 'literal' strings.
+    // if s is "\"hello\\n\"" strip_prefix('"') gives Some(hello\n")
     if let Some(rest) = s.strip_prefix('"') {
         let inner = rest
             .strip_suffix('"')
+            .ok_or_else(|| ParseError::new(line_no, "unterminated string"))?;
+        return Ok(Value::String(unescape(inner, line_no)?));
+    }
+
+    if let Some(rest) = s.strip_prefix('\'') {
+        let inner = rest
+            .strip_suffix('\'')
             .ok_or_else(|| ParseError::new(line_no, "unterminated string"))?;
         return Ok(Value::String(inner.to_string()));
     }
@@ -169,6 +177,37 @@ fn parse_value(s: &str, line_no: usize) -> Result<Value, ParseError> {
         line_no,
         format!("can't understand value `{s}`"),
     ))
+}
+
+// Go through the characters one at a time. If it's not a backslash,
+// copy it to the output. If it is a backslash, take the next character
+// and decide what to add based on that.
+fn unescape(s: &str, line_no: usize) -> Result<String, ParseError> {
+    let mut out = String::new();
+    let mut chars = s.chars();
+
+    while let Some(c) = chars.next() {
+        if c != '\\' {
+            out.push(c); // ordinary char: copy it
+            continue; // and move on
+        }
+        // We just saw a backslash. The NEXT char decides what it means.
+        match chars.next() {
+            Some('n') => out.push('\n'),
+            // YOUR TURN: Some('"'), Some('\\'), Some('t')
+            Some('"') => out.push('"'),
+            Some('t') => out.push('\t'),
+            Some('\\') => out.push('\\'),
+            Some(other) => {
+                return Err(ParseError::new(
+                    line_no,
+                    format!("invalid escape `\\{other}`"),
+                ));
+            }
+            None => return Err(ParseError::new(line_no, "backslash at end of string")),
+        }
+    }
+    Ok(out)
 }
 
 /// STEP 4 (you): `[1, 2, 3]`, `["a", "b"]`, `[]`, `[ [1,2], [3] ]`
