@@ -75,7 +75,7 @@ fn step4_trailing_comma_allowed() {
 
 // ---- STEP 5: inline tables -----------------------------------------------
 #[test]
-#[ignore = "step 5"]
+// #[ignore = "step 5"]
 fn step5_inline_table() {
     let t = parse(r#"dep = { version = "1.0", features = ["derive", "std"] }"#).unwrap();
     let dep = &t["dep"];

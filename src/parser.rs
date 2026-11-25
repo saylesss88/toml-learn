@@ -265,9 +265,38 @@ fn split_top_level(s: &str) -> Vec<&str> {
 
 /// STEP 5 (you): `{ version = "1", features = ["derive"] }`
 /// Same splitter as arrays, then each piece is `key = value`.
+///
+/// # Returns
+///
+/// ```text
+/// Table {
+///     "features": Array([String("derive")]),
+///     "version": String("1").
+/// }
+/// ```
 fn parse_inline_table(s: &str, line_no: usize) -> Result<Value, ParseError> {
-    let _ = (s, line_no);
-    todo!("step 5: parse an inline table")
+    let inner = s
+        .strip_prefix('{')
+        .and_then(|r| r.strip_suffix('}'))
+        .ok_or_else(|| ParseError::new(line_no, "inline table"))?;
+    let mut table = Table::new();
+    for word in split_top_level(inner) {
+        let word = word.trim();
+        if word.is_empty() {
+            continue;
+        }
+        let (key, value_text) = word.split_once('=').ok_or_else(|| {
+            ParseError::new(line_no, format!("expected `key = value`, got `{word}`"))
+        })?;
+        let key = key.trim();
+        let value_text = value_text.trim();
+        if key.is_empty() {
+            return Err(ParseError::new(line_no, "missing key before `=`"));
+        }
+
+        table.insert(key.to_string(), parse_value(value_text, line_no)?);
+    }
+    Ok(Value::Table(table))
 }
 
 // Unit tests for private helpers live next to them. Integration tests
