@@ -57,9 +57,14 @@ pub fn parse(input: &str) -> Result<Table, ParseError> {
         if key.is_empty() {
             return Err(ParseError::new(line_no, "missing key before `=`"));
         }
+
         // STEP 6 (you): dotted keys. `a.b = 1` should mean table a, key b.
         // Right now "a.b" is stored as one literal key. Hint: split_key + the
         // helper below already do 90% of the work.
+        let mut parts = split_key(key);
+        let last = parts
+            .pop()
+            .ok_or_else(|| ParseError::new(line_no, "empty key"))?;
 
         let value = parse_value(value_text.trim(), line_no)?;
         let table = get_or_create_table(&mut root, &current_path, line_no)?;
