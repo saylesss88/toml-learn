@@ -1,0 +1,2 @@
+    Checking toml-learn v0.1.0 (/home/jr/dev/toml-learn)
+error: could not compile `toml-learn` (test "steps") due to 1 previous error

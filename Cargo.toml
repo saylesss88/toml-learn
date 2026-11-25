@@ -1,0 +1,8 @@
+[package]
+name = "toml-learn"
+version = "0.1.0"
+edition = "2021"
+description = "A learning-exercise TOML parser (plus Cargo manifest reader)"
+
+# Deliberately zero dependencies: the point is to write it yourself.
+[dependencies]

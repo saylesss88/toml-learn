@@ -1,0 +1,10 @@
+# Works with v1 as shipped.
+title = "toml-learn"
+count = 1_000
+enabled = true
+
+[owner]
+name = "Tom"   # trailing comment
+
+[server.dev]
+port = 8080
