@@ -49,7 +49,7 @@ fn step3_literal_strings() {
 
 // ---- STEP 4: single-line arrays ------------------------------------------
 #[test]
-#[ignore = "step 4"]
+// #[ignore = "step 4"]
 fn step4_arrays() {
     let t = parse(
         r#"a = [1, 2, 3]
@@ -67,7 +67,7 @@ e = ["has, comma", "ok"]"#,
 }
 
 #[test]
-#[ignore = "step 4"]
+// #[ignore = "step 4"]
 fn step4_trailing_comma_allowed() {
     let t = parse("a = [1, 2,]").unwrap();
     assert_eq!(t["a"].as_array().unwrap().len(), 2);

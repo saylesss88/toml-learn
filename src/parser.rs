@@ -222,8 +222,45 @@ fn unescape(s: &str, line_no: usize) -> Result<String, ParseError> {
 /// Step 2 is the real problem. Write it as its own fn and test it alone.
 /// You'll reuse it in step 5.
 fn parse_array(s: &str, line_no: usize) -> Result<Value, ParseError> {
-    let _ = (s, line_no);
-    todo!("step 4: parse a single-line array")
+    // let _ = (s, line_no);
+    // todo!("step 4: parse a single-line array")
+    let inner = s
+        .strip_prefix('[')
+        .and_then(|r| r.strip_suffix(']'))
+        .ok_or_else(|| ParseError::new(line_no, "unclosed array"))?;
+    let mut items = Vec::new();
+    for word in split_top_level(inner) {
+        let word = word.trim();
+        if word.is_empty() {
+            continue;
+        }
+        items.push(parse_value(word, line_no)?);
+    }
+    Ok(Value::Array(items))
+}
+
+fn split_top_level(s: &str) -> Vec<&str> {
+    let mut pieces = Vec::new();
+    let mut depth = 0;
+    let mut in_string = false;
+    let mut start = 0;
+
+    for (i, c) in s.char_indices() {
+        if c == '"' {
+            in_string = !in_string;
+        } else if in_string {
+            continue; // nothing inside a string counts
+        } else if c == '[' || c == '{' {
+            depth += 1;
+        } else if c == ']' || c == '}' {
+            depth -= 1;
+        } else if c == ',' && depth == 0 {
+            pieces.push(&s[start..i]); // slice from start up to the comma
+            start = i + 1; // next piece begins after the comma
+        }
+    }
+    pieces.push(&s[start..]); // the last piece has no comma after it
+    pieces
 }
 
 /// STEP 5 (you): `{ version = "1", features = ["derive"] }`
