@@ -105,7 +105,7 @@ fn step6_dotted_keys() {
 
 // ---- STEP 7: richer manifest ---------------------------------------------
 #[test]
-#[ignore = "step 7"]
+// #[ignore = "step 7"]
 fn step7_authors() {
     let m =
         Manifest::parse("[package]\nname = \"x\"\nversion = \"1\"\nauthors = [\"Tom\"]").unwrap();
@@ -113,7 +113,7 @@ fn step7_authors() {
 }
 
 #[test]
-#[ignore = "step 7"]
+// #[ignore = "step 7"]
 fn step7_detailed_dependency() {
     let src = r#"
 [package]
@@ -141,7 +141,7 @@ local = { path = "../local", optional = true }
 
 // ---- STEP 8: the wall (needs the phase-2 refactor) -----------------------
 #[test]
-#[ignore = "step 8 / phase 2"]
+// #[ignore = "step 8 / phase 2"]
 fn step8_real_cargo_toml() {
     let src = include_str!("../fixtures/real_cargo.toml");
     let m = Manifest::parse(src).unwrap();

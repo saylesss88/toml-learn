@@ -15,6 +15,8 @@ use crate::value::{Table, Value};
 pub struct Manifest {
     pub package: Package,
     pub dependencies: BTreeMap<String, Dependency>,
+    pub dev_dependencies: BTreeMap<String, Dependency>,
+    pub features: BTreeMap<String, Vec<String>>,
     // STEP 7 (you): dev_dependencies, features, ...
 }
 
@@ -24,6 +26,7 @@ pub struct Package {
     pub version: String,
     pub edition: Option<String>,
     pub authors: Vec<String>,
+    pub description: Option<String>,
 }
 
 /// Cargo allows two spellings:
@@ -95,20 +98,39 @@ impl Manifest {
         let package_table = required_table(&root, "package")?;
         let package = Package::from_table(package_table)?;
 
-        let mut dependencies = BTreeMap::new();
-        // [dependencies] is optional, so `if let` not `?`.
-        if let Some(dep_table) = optional_table(&root, "dependencies")? {
-            for (name, value) in dep_table {
-                let dep = Dependency::from_value(name, value)?;
-                dependencies.insert(name.clone(), dep);
-            }
-        }
+        let dependencies = read_deps(&root, "dependencies")?;
+        let dev_dependencies = read_deps(&root, "dev-dependencies")?;
+        let features = read_features(&root)?;
 
         Ok(Manifest {
             package,
             dependencies,
+            dev_dependencies,
+            features,
         })
     }
+}
+
+fn read_features(root: &Table) -> Result<BTreeMap<String, Vec<String>>, ManifestError> {
+    let mut feat = BTreeMap::new();
+    if let Some(f) = optional_table(root, "features")? {
+        for (name, value) in f {
+            let list = str_array(value, &format!("features.{name}"))?;
+            feat.insert(name.clone(), list);
+        }
+    }
+    Ok(feat)
+}
+
+fn read_deps(root: &Table, key: &str) -> Result<BTreeMap<String, Dependency>, ManifestError> {
+    let mut map = BTreeMap::new();
+    if let Some(deps) = optional_table(root, key)? {
+        for (name, value) in deps {
+            let dep = Dependency::from_value(name, value)?;
+            map.insert(name.clone(), dep);
+        }
+    }
+    Ok(map)
 }
 
 impl Package {
@@ -117,27 +139,25 @@ impl Package {
             name: required_str(t, "package", "name")?,
             version: required_str(t, "package", "version")?,
             edition: optional_str(t, "package", "edition")?,
-            // STEP 7 (you): read `authors = ["a", "b"]` into Vec<String>.
-            // Needs step 4 (arrays) first. Write an `optional_str_array` helper
-            // next to the others below.
-            authors: Vec::new(),
+            authors: optional_str_array(t, "package", "authors")?,
+            description: optional_str(t, "package", "description")?,
         })
     }
 }
 
 impl Dependency {
     fn from_value(name: &str, value: &Value) -> Result<Self, ManifestError> {
+        let section = format!("dependencies.{name}");
         match value {
             Value::String(v) => Ok(Dependency::Simple(v.clone())),
-            Value::Table(_t) => {
-                // STEP 7 (you): build Dependency::Detailed from the table.
-                // Every field is optional; `optional` defaults to false.
-                // The helpers below take a `section` for error messages —
-                // what should it be here? (format!("dependencies.{name}"))
-                todo!("step 7: detailed dependency `{name}`")
-            }
+            Value::Table(t) => Ok(Dependency::Detailed {
+                version: optional_str(t, &section, "version")?,
+                path: optional_str(t, &section, "path")?,
+                features: optional_str_array(t, &section, "features")?,
+                optional: optional_bool(t, &section, "optional")?.unwrap_or(false),
+            }),
             other => Err(ManifestError::WrongType {
-                key: format!("dependencies.{name}"),
+                key: section,
                 expected: "string or table",
                 found: other.type_name(),
             }),
@@ -146,9 +166,47 @@ impl Dependency {
 }
 
 // ---- Small helpers ---------------------------------------------------------
+//
+// - The `optional_*` ones look up a key, accept it if it's missing, and check
+//   its type if it's there.
+// - The `required_*` ones wrap an optional one and turn "missing" into an
+//   error.
+//
 // Notice the repetition below. That's fine in v1. In the refactor you might
 // collapse these with a trait or a generic. Don't do it until you've written
 // the 4th near-copy and feel the pain — premature abstraction is worse.
+fn str_array(val: &Value, key: &str) -> Result<Vec<String>, ManifestError> {
+    match val {
+        Value::Array(items) => {
+            let mut storage = Vec::new();
+            for item in items {
+                match item.as_str() {
+                    Some(s) => storage.push(s.to_string()),
+                    None => {
+                        return Err(ManifestError::WrongType {
+                            key: key.to_string(),
+                            expected: "string",
+                            found: item.type_name(),
+                        });
+                    }
+                }
+            }
+            Ok(storage)
+        }
+        other => Err(ManifestError::WrongType {
+            key: key.to_string(),
+            expected: "array of strings",
+            found: other.type_name(),
+        }),
+    }
+}
+
+fn optional_str_array(t: &Table, section: &str, key: &str) -> Result<Vec<String>, ManifestError> {
+    match t.get(key) {
+        None => Ok(Vec::new()),
+        Some(v) => str_array(v, &format!("{section}.{key}")),
+    }
+}
 
 fn required_table<'a>(root: &'a Table, key: &str) -> Result<&'a Table, ManifestError> {
     optional_table(root, key)?.ok_or_else(|| ManifestError::Missing(key.to_string()))
@@ -170,6 +228,10 @@ fn required_str(t: &Table, section: &str, key: &str) -> Result<String, ManifestE
     optional_str(t, section, key)?.ok_or_else(|| ManifestError::Missing(format!("{section}.{key}")))
 }
 
+/// `t` is whichever table you're looking in right now.
+/// `key` is what to look up in `t`, which is either there or isn't.
+/// `section` is the name of that particular table: its path from root like `"package"`
+/// or `"dependencies.clap"`.
 fn optional_str(t: &Table, section: &str, key: &str) -> Result<Option<String>, ManifestError> {
     match t.get(key) {
         None => Ok(None),
@@ -177,6 +239,18 @@ fn optional_str(t: &Table, section: &str, key: &str) -> Result<Option<String>, M
         Some(other) => Err(ManifestError::WrongType {
             key: format!("{section}.{key}"),
             expected: "string",
+            found: other.type_name(),
+        }),
+    }
+}
+
+fn optional_bool(t: &Table, section: &str, key: &str) -> Result<Option<bool>, ManifestError> {
+    match t.get(key) {
+        None => Ok(None),
+        Some(Value::Boolean(b)) => Ok(Some(*b)),
+        Some(other) => Err(ManifestError::WrongType {
+            key: format!("{section}.{key}"),
+            expected: "boolean",
             found: other.type_name(),
         }),
     }
