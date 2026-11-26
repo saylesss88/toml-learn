@@ -65,14 +65,17 @@ pub fn parse(input: &str) -> Result<Table, ParseError> {
         let last = parts
             .pop()
             .ok_or_else(|| ParseError::new(line_no, "empty key"))?;
+        let mut full_path = current_path.clone();
+        full_path.extend(parts);
 
         let value = parse_value(value_text.trim(), line_no)?;
-        let table = get_or_create_table(&mut root, &current_path, line_no)?;
+        // let table = get_or_create_table(&mut root, &current_path, line_no)?;
+        let table = get_or_create_table(&mut root, &full_path, line_no)?;
 
-        if table.contains_key(key) {
+        if table.contains_key(&last) {
             return Err(ParseError::new(line_no, format!("duplicate key `{key}`")));
         }
-        table.insert(key.to_string(), value);
+        table.insert(last.to_string(), value);
     }
 
     Ok(root)

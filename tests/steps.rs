@@ -90,7 +90,7 @@ fn step5_inline_table() {
 
 // ---- STEP 6: dotted keys -------------------------------------------------
 #[test]
-#[ignore = "step 6"]
+// #[ignore = "step 6"]
 fn step6_dotted_keys() {
     let t = parse("a.b.c = 1\na.d = 2").unwrap();
     assert_eq!(
